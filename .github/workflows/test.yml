@@ -15,10 +15,13 @@ on:
 env:
   dotnet-version: 8.0.x
 
-jobs:
+jobs:  
   build-test:
     name: Build & Test
     runs-on: ubuntu-latest
+    defaults:
+     run:
+      working-directory: SqlServer.Transaction.IsolationLevel.Tests
         
     steps:
     - name: Checkout
@@ -38,6 +41,5 @@ jobs:
     - name: .NET Build
       run: dotnet build --no-restore
       
-    - name: .NET Test
-      working-directory: SqlServer.Transaction.IsolationLevel.Tests
+    - name: .NET Test      
       run: dotnet test
