@@ -4,38 +4,26 @@ using Xunit.Abstractions;
 
 namespace SqlServer.Transaction.IsolationLevel.Tests;
 
-public class SqlServerContainerTests : IAsyncDisposable
+[Collection(nameof(SqlServerFixture))]
+public class SqlServerContainerTests
 {
     private readonly ITestOutputHelper _output;
-    private MsSqlContainer _sqlContainer;
+    private readonly SqlServerFixture _sqlServerFixture;
 
-    public SqlServerContainerTests(ITestOutputHelper output) => _output = output;
-
-    public async ValueTask DisposeAsync()
+    public SqlServerContainerTests(ITestOutputHelper output, SqlServerFixture sqlServerFixture)
     {
-        if (_sqlContainer != null)
-        {
-            await _sqlContainer.StopAsync();
-        }
+        _output = output;
+        _sqlServerFixture = sqlServerFixture;
     }
 
     [Fact]
-    public async Task StartSqlServerContainer()
+    public void StartSqlServerContainer()
     {
-        // Arrange
-        var sqlContainerBuilder = new MsSqlBuilder().WithPassword("Strong@Passw0rd");
-
-        _sqlContainer = sqlContainerBuilder.Build();
-
-        await _sqlContainer.StartAsync();
-
-        _output.WriteLine("SQL Server container started.");
-        _output.WriteLine($"Connection string : {_sqlContainer.GetConnectionString()}");
-
         // Act
-        var connectionString = _sqlContainer.GetConnectionString();
+        var connectionString = _sqlServerFixture.ConnectionString;
 
         // Assert
+        _output.WriteLine($"Connection string : {connectionString}");
         Assert.NotNull(connectionString);
     }
 }
