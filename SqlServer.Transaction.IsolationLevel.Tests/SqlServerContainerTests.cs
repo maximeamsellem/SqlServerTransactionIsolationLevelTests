@@ -45,11 +45,39 @@ public class SqlServerContainerTests
         await UpdateProduitAsync(connection1, updateTransaction, productId, updatedStock);
 
         // Act       
-        var stock = await QuerySingleWithReadUncommittedAsync(connection2, productId);
+        var stock = await QuerySingleAsync(connection2, productId, System.Data.IsolationLevel.ReadUncommitted);
         await updateTransaction.CommitAsync();
 
         // Assert
         Assert.Equal(updatedStock, stock);
+    }
+
+    [Fact]
+    public async Task Read_Commited_Should_Raise_Timeout_Exception_When_Update_Transaction_Is_Committed_Before_Command_Timeout()
+    {
+        // Arrange
+        using var connection1 = GetSqlConnection();
+        using var connection2 = GetSqlConnection();
+
+        var initialStock = 100;
+        var updatedStock = 90;
+        var productId = Guid.NewGuid();
+
+        await InsertProduitAsync(connection1, productId, initialStock);
+
+        using var updateTransaction = connection1.BeginTransaction(System.Data.IsolationLevel.ReadCommitted);
+        await UpdateProduitAsync(connection1, updateTransaction, productId, updatedStock);
+
+        // Act
+        try
+        {
+            await QuerySingleAsync(connection2, productId, System.Data.IsolationLevel.ReadCommitted);
+            Assert.Fail();
+        }
+        catch (SqlException e) when (e.Message.Contains("Timeout"))
+        {
+            _output.WriteLine("TimeoutException");
+        }
     }
 
     private async Task InsertProduitAsync(SqlConnection connection, Guid productId, int stock)
@@ -80,16 +108,20 @@ public class SqlServerContainerTests
             transaction: transaction);
     }
 
-    private Task<int> QuerySingleWithReadUncommittedAsync(SqlConnection connection, Guid productId)
+    private Task<int> QuerySingleAsync(
+        SqlConnection connection,
+        Guid productId,
+        System.Data.IsolationLevel isolationLevel)
     {
-        using var transaction = connection.BeginTransaction(System.Data.IsolationLevel.ReadUncommitted);
+        using var transaction = connection.BeginTransaction(isolationLevel);
 
         _output.WriteLine($"QuerySingleAsync : {productId}");
 
         return connection.QuerySingleAsync<int>(
             "SELECT Stock FROM Produits WHERE Id = @Id",
             new { Id = productId },
-            transaction: transaction
+            transaction: transaction,
+            commandTimeout: TimeSpan.FromSeconds(2).Seconds
         );
     }
 
