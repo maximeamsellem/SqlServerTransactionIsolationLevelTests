@@ -39,4 +39,5 @@ jobs:
       run: dotnet build --no-restore
       
     - name: .NET Test
+      working-directory: SqlServer.Transaction.IsolationLevel.Tests
       run: dotnet test
